@@ -12,18 +12,24 @@ class IvyInstaller implements PluginInterface
         Composer $composer,
         IOInterface $io
     ): void {
+        $composer
+            ->getInstallationManager()
+            ->addInstaller(new IvyExtensionInstaller($io, $composer));
+
         $io->write('Ivy Sprout activated');
     }
 
     public function deactivate(
         Composer $composer,
         IOInterface $io
-    ): void {
+    ): void
+    {
     }
 
     public function uninstall(
         Composer $composer,
         IOInterface $io
-    ): void {
+    ): void
+    {
     }
 }
