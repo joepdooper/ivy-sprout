@@ -16,7 +16,7 @@ class IvyInstaller implements PluginInterface
             ->getInstallationManager()
             ->addInstaller(new IvyExtensionInstaller($io, $composer));
 
-        $io->write('Ivy Sprout activated');
+        $io->write('Sprout activated');
     }
 
     public function deactivate(
