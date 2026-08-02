@@ -20,43 +20,18 @@ class ComposerRunner
             'HOME' => $cacheBase,
             'COMPOSER_HOME' => $composerHome,
             'COMPOSER_ALLOW_SUPERUSER' => '1',
+            'GIT_CONFIG_COUNT' => '3',
+            'GIT_CONFIG_KEY_0' => 'safe.directory',
+            'GIT_CONFIG_VALUE_0' => '/var/ivy-cultivate',
+            'GIT_CONFIG_KEY_1' => 'safe.directory',
+            'GIT_CONFIG_VALUE_1' => '/var/ivy-roots',
+            'GIT_CONFIG_KEY_2' => 'safe.directory',
+            'GIT_CONFIG_VALUE_2' => '/var/ivy-sprout',
         ];
-    }
-
-    private function ensureGitSafeDirectory(string $repoPath): void
-    {
-        $env = $this->getComposerEnv();
-
-        $gitConfigGlobal = $env['GIT_CONFIG_GLOBAL'];
-        if (! file_exists($gitConfigGlobal)) {
-            @touch($gitConfigGlobal);
-        }
-
-        $process = new Process(
-            [
-                'git',
-                'config',
-                '--global',
-                '--add',
-                'safe.directory',
-                $repoPath,
-            ],
-            Path::get('PROJECT_PATH'),
-            $env
-        );
-
-        $process->setTimeout(30);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException($process->getErrorOutput() ?: $process->getOutput());
-        }
     }
 
     public function requirePackage(string $package): void
     {
-        $this->ensureGitSafeDirectory(Path::get('PROJECT_PATH'));
-
         $process = new Process(
             [
                 'composer',
