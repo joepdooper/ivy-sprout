@@ -77,4 +77,52 @@ class ComposerRunner
             throw new \RuntimeException($process->getErrorOutput() ?: $process->getOutput());
         }
     }
+
+    public static function findPlugins(string $type = 'ivy-plugin', int $limit = 25): array
+    {
+        $listUrl = "https://packagist.org/packages/list.json?type=" . rawurlencode($type) . "&limit=" . $limit;
+        $namesJson = file_get_contents($listUrl);
+        if ($namesJson === false) {
+            throw new \RuntimeException("Failed to fetch Packagist list: " . $listUrl);
+        }
+
+        $namesData = json_decode($namesJson, true);
+        $packageNames = $namesData['packageNames'] ?? [];
+
+        $p = [];
+
+        foreach ($packageNames as $fullName) {
+            [$vendor, $package] = explode('/', $fullName, 2);
+
+            $url = "https://repo.packagist.org/p2/".$vendor."/".$package.".json";
+            $json = file_get_contents($url);
+            if ($json === false) {
+                continue;
+            }
+
+            $meta = json_decode($json, true);
+            if (!$meta || !isset($meta['packages'][$fullName])) {
+                continue;
+            }
+
+            $versions = $meta['packages'][$fullName];
+            if (!is_array($versions)) {
+                continue;
+            }
+
+            $v = [];
+
+            foreach ($versions as $version) {
+                $v[] = $version['version'];
+            }
+
+            $p[] = [
+                'package' => $fullName,
+                'versions' => $v,
+            ];
+        }
+
+        return $p;
+    }
+
 }
