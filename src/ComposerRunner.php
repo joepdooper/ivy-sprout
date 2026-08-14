@@ -7,7 +7,7 @@ use Symfony\Component\Process\Process;
 
 class ComposerRunner
 {
-    private function getComposerEnv(): array
+    private static function getComposerEnv(): array
     {
         $cacheBase = rtrim(Path::get('ROOT'), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'cache';
         $composerHome = $cacheBase . DIRECTORY_SEPARATOR . 'composer';
@@ -30,7 +30,7 @@ class ComposerRunner
         ];
     }
 
-    public function requirePackage(string $package): void
+    public static function requirePackage(string $package): void
     {
         $process = new Process(
             [
@@ -43,18 +43,13 @@ class ComposerRunner
                 '--no-scripts'
             ],
             Path::get('PROJECT_PATH'),
-            $this->getComposerEnv()
+            self::getComposerEnv()
         );
 
-        $process->setTimeout(600);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException($process->getErrorOutput() ?: $process->getOutput());
-        }
+        $process->start();
     }
 
-    public function removePackage(string $package): void
+    public static function removePackage(string $package): void
     {
         $process = new Process(
             [
@@ -67,10 +62,9 @@ class ComposerRunner
                 '--no-scripts'
             ],
             Path::get('PROJECT_PATH'),
-            $this->getComposerEnv()
+            self::getComposerEnv()
         );
 
-        $process->setTimeout(600);
         $process->run();
 
         if (! $process->isSuccessful()) {
@@ -78,9 +72,9 @@ class ComposerRunner
         }
     }
 
-    public static function findPlugins(string $type = 'ivy-plugin', int $limit = 25): array
+    public static function findPlugins(string $type = 'ivy-plugin', int $page = 1, int $per_page = 25): array
     {
-        $listUrl = "https://packagist.org/packages/list.json?type=" . rawurlencode($type) . "&limit=" . $limit;
+        $listUrl = "https://packagist.org/packages/list.json?type=" . rawurlencode($type) . "&page=" . $page . "&per_page=" . $per_page;
         $namesJson = file_get_contents($listUrl);
         if ($namesJson === false) {
             throw new \RuntimeException("Failed to fetch Packagist list: " . $listUrl);
@@ -119,6 +113,8 @@ class ComposerRunner
             $p[] = [
                 'package' => $fullName,
                 'versions' => $v,
+                'description' => $meta['packages'][$fullName][0]['description'] ?? null,
+                'extra' => $meta['packages'][$fullName][0]['extra'] ?? null,
             ];
         }
 
