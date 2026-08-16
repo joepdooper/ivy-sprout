@@ -9,8 +9,8 @@ class ComposerRunner
 {
     private static function getComposerEnv(): array
     {
-        $cacheBase = rtrim(Path::get('ROOT'), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'cache';
-        $composerHome = $cacheBase . DIRECTORY_SEPARATOR . 'composer';
+        $cacheBase = '/var/www/cache';
+        $composerHome = $cacheBase . '/composer';
 
         if (! is_dir($composerHome) && ! mkdir($composerHome, 0775, true) && ! is_dir($composerHome)) {
             throw new \RuntimeException("Cannot create composer home: {$composerHome}");
@@ -20,18 +20,25 @@ class ComposerRunner
             'HOME' => $cacheBase,
             'COMPOSER_HOME' => $composerHome,
             'COMPOSER_ALLOW_SUPERUSER' => '1',
-            'GIT_CONFIG_COUNT' => '3',
+            'GIT_CONFIG_COUNT' => '4',
             'GIT_CONFIG_KEY_0' => 'safe.directory',
-            'GIT_CONFIG_VALUE_0' => '/var/ivy-cultivate',
+            'GIT_CONFIG_VALUE_0' => '/var/www',
+
             'GIT_CONFIG_KEY_1' => 'safe.directory',
-            'GIT_CONFIG_VALUE_1' => '/var/ivy-roots',
+            'GIT_CONFIG_VALUE_1' => '/var/ivy-cultivate',
+
             'GIT_CONFIG_KEY_2' => 'safe.directory',
-            'GIT_CONFIG_VALUE_2' => '/var/ivy-sprout',
+            'GIT_CONFIG_VALUE_2' => '/var/ivy-roots',
+
+            'GIT_CONFIG_KEY_3' => 'safe.directory',
+            'GIT_CONFIG_VALUE_3' => '/var/ivy-sprout',
         ];
     }
 
     public static function requirePackage(string $package): void
     {
+        $cwd = '/var/www';
+
         $process = new Process(
             [
                 'composer',
@@ -42,11 +49,34 @@ class ComposerRunner
                 '--prefer-dist',
                 '--no-scripts'
             ],
-            Path::get('PROJECT_PATH'),
+            $cwd,
             self::getComposerEnv()
         );
 
-        $process->start();
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            $logPath = $cwd . '/logs/ivy-runner.log';
+
+            $diag = [
+                'php_uid=' . (function_exists('posix_geteuid') ? posix_geteuid() : 'n/a'),
+                'php_gid=' . (function_exists('posix_getegid') ? posix_getegid() : 'n/a'),
+                'php_user=' . (function_exists('posix_getpwuid') && function_exists('posix_geteuid')
+                    ? (posix_getpwuid(posix_geteuid())['name'] ?? 'n/a')
+                    : 'n/a'),
+                'cwd=' . getcwd(),
+                'process_cwd=' . $cwd,
+                'cmd=' . implode(' ', array_map('strval', [
+                    'composer', 'require', $package,
+                    '--no-interaction','--no-progress','--prefer-dist','--no-scripts'
+                ])),
+                'stdout=' . $process->getOutput(),
+                'stderr=' . $process->getErrorOutput(),
+            ];
+
+            file_put_contents($logPath, date('c')." ERROR ".json_encode($diag, JSON_UNESCAPED_SLASHES)."\n", FILE_APPEND);
+            error_log($process->getErrorOutput() ?: $process->getOutput());
+        }
     }
 
     public static function removePackage(string $package): void
@@ -61,7 +91,7 @@ class ComposerRunner
                 '--prefer-dist',
                 '--no-scripts'
             ],
-            Path::get('PROJECT_PATH'),
+            Path::get('ROOT_PATH'),
             self::getComposerEnv()
         );
 
@@ -117,6 +147,42 @@ class ComposerRunner
                 'extra' => $meta['packages'][$fullName][0]['extra'] ?? null,
             ];
         }
+
+        return $p;
+    }
+
+    public static function getPlugin(string $fullName): array
+    {
+            [$vendor, $package] = explode('/', $fullName, 2);
+
+            $url = "https://repo.packagist.org/p2/".$vendor."/".$package.".json";
+            $json = file_get_contents($url);
+            if ($json === false) {
+                throw new \RuntimeException("Failed to fetch Packagist list: " . $url);
+            }
+
+            $meta = json_decode($json, true);
+            if (!$meta || !isset($meta['packages'][$fullName])) {
+                throw new \RuntimeException("Failed to fetch meta: " . $url);
+            }
+
+            $versions = $meta['packages'][$fullName];
+            if (!is_array($versions)) {
+                throw new \RuntimeException("Failed to fetch versions: " . $url);
+            }
+
+            $v = [];
+
+            foreach ($versions as $version) {
+                $v[] = $version['version'];
+            }
+
+            $p[] = [
+                'package' => $fullName,
+                'versions' => $v,
+                'description' => $meta['packages'][$fullName][0]['description'] ?? null,
+                'extra' => $meta['packages'][$fullName][0]['extra'] ?? null,
+            ];
 
         return $p;
     }

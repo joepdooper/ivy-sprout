@@ -1,8 +1,9 @@
-#!/usr/bin/env php
 <?php
 
-require dirname(__DIR__, 3) . '/autoload.php';
+use Ivy\Sprout\ComposerRunner;
+
+require './vendor/autoload.php';
 
 $package = $argv[1];
 
-\Ivy\Sprout\ComposerRunner::requirePackage($package);
+ComposerRunner::requirePackage($package);
