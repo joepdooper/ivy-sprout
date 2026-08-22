@@ -19,7 +19,6 @@ class ComposerRunner
         return [
             'HOME' => $cacheBase,
             'COMPOSER_HOME' => $composerHome,
-            'COMPOSER_ALLOW_SUPERUSER' => '1',
             'GIT_CONFIG_COUNT' => '4',
             'GIT_CONFIG_KEY_0' => 'safe.directory',
             'GIT_CONFIG_VALUE_0' => '/var/www',
@@ -37,8 +36,6 @@ class ComposerRunner
 
     public static function requirePackage(string $package): void
     {
-        $cwd = '/var/www';
-
         $process = new Process(
             [
                 'composer',
@@ -49,33 +46,14 @@ class ComposerRunner
                 '--prefer-dist',
                 '--no-scripts'
             ],
-            $cwd,
+            '/var/www',
             self::getComposerEnv()
         );
 
         $process->run();
 
         if (! $process->isSuccessful()) {
-            $logPath = $cwd . '/logs/ivy-runner.log';
-
-            $diag = [
-                'php_uid=' . (function_exists('posix_geteuid') ? posix_geteuid() : 'n/a'),
-                'php_gid=' . (function_exists('posix_getegid') ? posix_getegid() : 'n/a'),
-                'php_user=' . (function_exists('posix_getpwuid') && function_exists('posix_geteuid')
-                    ? (posix_getpwuid(posix_geteuid())['name'] ?? 'n/a')
-                    : 'n/a'),
-                'cwd=' . getcwd(),
-                'process_cwd=' . $cwd,
-                'cmd=' . implode(' ', array_map('strval', [
-                    'composer', 'require', $package,
-                    '--no-interaction','--no-progress','--prefer-dist','--no-scripts'
-                ])),
-                'stdout=' . $process->getOutput(),
-                'stderr=' . $process->getErrorOutput(),
-            ];
-
-            file_put_contents($logPath, date('c')." ERROR ".json_encode($diag, JSON_UNESCAPED_SLASHES)."\n", FILE_APPEND);
-            error_log($process->getErrorOutput() ?: $process->getOutput());
+            throw new \RuntimeException($process->getErrorOutput() ?: $process->getOutput());
         }
     }
 

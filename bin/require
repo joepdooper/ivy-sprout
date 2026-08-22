@@ -4,6 +4,11 @@ use Ivy\Sprout\ComposerRunner;
 
 require './vendor/autoload.php';
 
-$package = $argv[1];
+$package = $argv[1] ?? null;
+
+if (!$package) {
+    fwrite(STDERR, "Missing package name\n");
+    exit(1);
+}
 
 ComposerRunner::requirePackage($package);
