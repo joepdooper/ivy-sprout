@@ -7,80 +7,7 @@ use Symfony\Component\Process\Process;
 
 class ComposerRunner
 {
-    private static function getComposerEnv(): array
-    {
-        $cacheBase = '/var/www/cache';
-        $composerHome = $cacheBase . '/composer';
-
-        if (! is_dir($composerHome) && ! mkdir($composerHome, 0775, true) && ! is_dir($composerHome)) {
-            throw new \RuntimeException("Cannot create composer home: {$composerHome}");
-        }
-
-        return [
-            'HOME' => $cacheBase,
-            'COMPOSER_HOME' => $composerHome,
-            'GIT_CONFIG_COUNT' => '4',
-            'GIT_CONFIG_KEY_0' => 'safe.directory',
-            'GIT_CONFIG_VALUE_0' => '/var/www',
-
-            'GIT_CONFIG_KEY_1' => 'safe.directory',
-            'GIT_CONFIG_VALUE_1' => '/var/ivy-cultivate',
-
-            'GIT_CONFIG_KEY_2' => 'safe.directory',
-            'GIT_CONFIG_VALUE_2' => '/var/ivy-roots',
-
-            'GIT_CONFIG_KEY_3' => 'safe.directory',
-            'GIT_CONFIG_VALUE_3' => '/var/ivy-sprout',
-        ];
-    }
-
-    public static function requirePackage(string $package): void
-    {
-        $process = new Process(
-            [
-                'composer',
-                'require',
-                $package,
-                '--no-interaction',
-                '--no-progress',
-                '--prefer-dist',
-                '--no-scripts'
-            ],
-            '/var/www',
-            self::getComposerEnv()
-        );
-
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException($process->getErrorOutput() ?: $process->getOutput());
-        }
-    }
-
-    public static function removePackage(string $package): void
-    {
-        $process = new Process(
-            [
-                'composer',
-                'remove',
-                $package,
-                '--no-interaction',
-                '--no-progress',
-                '--prefer-dist',
-                '--no-scripts'
-            ],
-            Path::get('ROOT_PATH'),
-            self::getComposerEnv()
-        );
-
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException($process->getErrorOutput() ?: $process->getOutput());
-        }
-    }
-
-    public static function findPlugins(string $type = 'ivy-plugin', int $page = 1, int $per_page = 25): array
+    public static function getPluginCatalog(string $type = 'ivy-plugin', int $page = 1, int $per_page = 25): array
     {
         $listUrl = "https://packagist.org/packages/list.json?type=" . rawurlencode($type) . "&page=" . $page . "&per_page=" . $per_page;
         $namesJson = file_get_contents($listUrl);
@@ -128,41 +55,4 @@ class ComposerRunner
 
         return $p;
     }
-
-    public static function getPlugin(string $fullName): array
-    {
-            [$vendor, $package] = explode('/', $fullName, 2);
-
-            $url = "https://repo.packagist.org/p2/".$vendor."/".$package.".json";
-            $json = file_get_contents($url);
-            if ($json === false) {
-                throw new \RuntimeException("Failed to fetch Packagist list: " . $url);
-            }
-
-            $meta = json_decode($json, true);
-            if (!$meta || !isset($meta['packages'][$fullName])) {
-                throw new \RuntimeException("Failed to fetch meta: " . $url);
-            }
-
-            $versions = $meta['packages'][$fullName];
-            if (!is_array($versions)) {
-                throw new \RuntimeException("Failed to fetch versions: " . $url);
-            }
-
-            $v = [];
-
-            foreach ($versions as $version) {
-                $v[] = $version['version'];
-            }
-
-            $p[] = [
-                'package' => $fullName,
-                'versions' => $v,
-                'description' => $meta['packages'][$fullName][0]['description'] ?? null,
-                'extra' => $meta['packages'][$fullName][0]['extra'] ?? null,
-            ];
-
-        return $p;
-    }
-
 }

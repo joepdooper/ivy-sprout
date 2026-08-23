@@ -3,6 +3,7 @@
 namespace Ivy\Sprout;
 
 use Ivy\Shared\Core\Path;
+use Pest\Arch\Support\Composer;
 
 final class BackgroundProcess
 {
