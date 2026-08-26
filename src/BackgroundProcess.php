@@ -3,22 +3,42 @@
 namespace Ivy\Sprout;
 
 use Ivy\Shared\Core\Path;
-use Pest\Arch\Support\Composer;
 
 final class BackgroundProcess
 {
-    public static function require(string $package): void
-    {
-        $projectPath = Path::get('PROJECT_PATH');
-        $cacheBase = $projectPath . 'cache';
-        $composerHome = $cacheBase . '/composer';
+    private readonly string $projectPath;
 
-        exec(
-            'cd ' . $projectPath . ' && ' .
-            'HOME=' . $cacheBase . ' ' .
-            'COMPOSER_HOME=' . $composerHome . ' ' .
-            'composer require ' . escapeshellarg($package) .
-            ' >> /tmp/plugin-download.log 2>&1 < /dev/null &'
-        );
+    public function __construct()
+    {
+        $this->projectPath = Path::get('PROJECT_PATH');
+    }
+
+    public function require(string $package): void
+    {
+        $this->runComposer('require', $package);
+    }
+
+    public function update(string $package): void
+    {
+        $this->runComposer('update', $package);
+    }
+
+    public function remove(string $package): void
+    {
+        $this->runComposer('remove', $package);
+    }
+
+    private function runComposer(string $command, string $package): void
+    {
+        $cache = $this->projectPath . 'cache';
+
+        exec(sprintf(
+            'cd %s && HOME=%s COMPOSER_HOME=%s composer %s %s >> ./error/composer.log 2>&1 < /dev/null &',
+            escapeshellarg($this->projectPath),
+            escapeshellarg($cache),
+            escapeshellarg($cache . "/composer"),
+            $command,
+            escapeshellarg($package),
+        ));
     }
 }
