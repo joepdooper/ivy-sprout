@@ -15,9 +15,6 @@
       "Ivy\\Sprout\\": "src/"
     }
   },
-  "bin": [
-    "bin/require"
-  ],
   "extra": {
     "class": "Ivy\\Sprout\\IvyInstaller"
   }
