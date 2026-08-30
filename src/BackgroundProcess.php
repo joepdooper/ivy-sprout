@@ -31,14 +31,18 @@ final class BackgroundProcess
     private function runComposer(string $command, string $package): void
     {
         $cache = $this->projectPath . 'cache';
+        $log = $this->projectPath . 'logs/composer.log';
 
-        exec(sprintf(
-            'cd %s && HOME=%s COMPOSER_HOME=%s composer %s %s >> ./error/composer.log 2>&1 < /dev/null &',
+        $cmd = sprintf(
+            'cd %s && HOME=%s COMPOSER_HOME=%s composer %s %s >> %s 2>&1 < /dev/null &',
             escapeshellarg($this->projectPath),
             escapeshellarg($cache),
-            escapeshellarg($cache . "/composer"),
+            escapeshellarg($cache . '/composer'),
             $command,
             escapeshellarg($package),
-        ));
+            escapeshellarg($log),
+        );
+
+        exec($cmd);
     }
 }
